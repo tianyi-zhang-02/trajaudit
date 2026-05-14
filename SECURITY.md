@@ -7,7 +7,7 @@ the Docker sandbox that could be abused, a credential-leak vector in the
 Layer 3 providers, or a way to coerce the LLM judge into emitting unsafe
 output — please **do not open a public GitHub issue**.
 
-Instead, email: `<placeholder>` (will be filled in before public launch).
+Instead, [report it privately via GitHub's Private Vulnerability Reporting](https://github.com/tianyi-zhang-02/trajaudit/security/advisories/new). This routes directly to repo maintainers and creates a private advisory thread.
 
 Please include:
 
