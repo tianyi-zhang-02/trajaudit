@@ -143,7 +143,16 @@ class METRPromptMonitor:
         safety_margin: int = _DEFAULT_SAFETY_MARGIN,
     ) -> None:
         if client is None:
-            from anthropic import Anthropic  # local import keeps lib optional at import time
+            try:
+                from anthropic import Anthropic
+            except ImportError as exc:  # pragma: no cover — exercised at install time, not unit test time
+                raise ImportError(
+                    "METRPromptMonitor requires the 'anthropic' package, which is not "
+                    "installed. Install it via the llm extra:\n"
+                    "    pip install 'trajaudit[llm]'\n"
+                    "(anthropic lives in the [llm] optional-dependencies group so users "
+                    "writing non-Anthropic monitors don't pay for the SDK.)"
+                ) from exc
             client = Anthropic()
         self._client = client
         self._model = model

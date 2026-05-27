@@ -1973,7 +1973,6 @@ name = "trajaudit"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
-    { name = "anthropic" },
     { name = "datasets" },
     { name = "numpy" },
     { name = "pydantic" },
@@ -1989,7 +1988,8 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
-openai = [
+llm = [
+    { name = "anthropic" },
     { name = "openai" },
 ]
 sandbox = [
@@ -2006,12 +2006,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", specifier = ">=0.40,<1" },
+    { name = "anthropic", marker = "extra == 'llm'", specifier = ">=0.40,<1" },
     { name = "datasets", specifier = ">=2.18,<4" },
     { name = "docker", marker = "extra == 'sandbox'", specifier = ">=7.1,<8" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10,<2" },
     { name = "numpy", specifier = ">=1.26,<3" },
-    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.50,<3" },
+    { name = "openai", marker = "extra == 'llm'", specifier = ">=1.50,<3" },
     { name = "pydantic", specifier = ">=2.6,<3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0,<9" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0,<7" },
@@ -2020,7 +2020,7 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.4,<2" },
     { name = "typer", specifier = ">=0.12,<1" },
 ]
-provides-extras = ["openai", "sandbox", "dev"]
+provides-extras = ["llm", "sandbox", "dev"]
 
 [package.metadata.requires-dev]
 dev = [
