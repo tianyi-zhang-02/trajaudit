@@ -55,3 +55,37 @@ Out-of-scope items noticed during the post-audit refactor (commits
   would catch the next round of phantom deps automatically.
 - **CI matrix is `[3.11, 3.12]` only.** Add 3.13 once it's broadly
   available in `setup-python@v5`.
+
+## v0.1 follow-ups (added during Tasks 4 + 5)
+
+- **`leaderboard` + `compare` CLI commands removed.** The pre-pivot
+  `cli.py` had stub subcommands for both. Removed in commit
+  `feat(cli): add trajaudit run command` to narrow v0.1 to a single
+  command. Reinstate when v0.2 reporting work is ready — the data
+  shape (`ReportCard`, `ScoreRecord`) is already friendly to both.
+- **Version bump from `0.0.1` to `0.1.0`.** Defers to the user because
+  it touches `pyproject.toml`'s `[project]` metadata block, which
+  the autonomous-session safeguards exclude.
+- **Multi-monitor support.** `--monitor` accepts only `"metr"` in
+  v0.1. Generalize once a second concrete monitor exists (EvilGenie
+  is the natural first follow-on).
+- **Per-tag AUROC + calibration curves.** Explicitly excluded from
+  v0.1's report card. Likely homes: a sibling `report` function or
+  a `--report-detail` CLI flag.
+- **Context-window parameterization.** `METRPromptMonitor` hardcodes
+  `_DEFAULT_CONTEXT_WINDOW = 200_000`. TODO comment in place;
+  parameterize per-model when v0.2 introduces additional monitor
+  families.
+- **Cost-tracking placement.** `Monitor` instances expose
+  `total_cost_usd` / `total_input_tokens` / `total_output_tokens` /
+  `calls` as instance attributes. Works for v0.1 with one monitor; if
+  multiple monitors are composed in v0.2, consider a shared
+  `CostTracker` injected at construction or returned alongside the
+  verdict via a richer return type.
+- **Pricing constants.** `_INPUT_USD_PER_MTOK = 3.0` and
+  `_OUTPUT_USD_PER_MTOK = 15.0` are hardcoded for `claude-sonnet-4-7`
+  in `metr_prompt.py`. If Anthropic adjusts Sonnet pricing or v0.2
+  adds non-Anthropic monitors, externalize.
+- **`load_malt_split` only knows `metr-evals/malt-public`.** A second
+  variant for the DAG-format `malt-transcripts-public` would let us
+  cover the multi-completion case the current adapter flattens.
