@@ -1,131 +1,259 @@
-"""Command-line entry point for TrajAudit.
+"""Command-line entry point for TrajAudit v0.1.
 
-The CLI is built on `typer`_ and is intentionally thin — the bulk of
-the orchestration lives in :mod:`trajaudit.core.runner`. The CLI's job
-is to parse arguments, configure the runner, and emit reports.
+The CLI ships one command in v0.1:
 
-Subcommands:
+* ``trajaudit run`` — load MALT trajectories, apply the structural
+  transformation battery, score every variant with the chosen monitor,
+  print a report card, and persist raw scores to JSON.
 
-* ``trajaudit run`` — audit a directory of trajectories for a given
-  benchmark and emit :class:`~trajaudit.core.verdict.AuditVerdict` records.
-* ``trajaudit leaderboard`` — aggregate verdicts into an
-  integrity-adjusted leaderboard across many agents' runs.
-* ``trajaudit compare`` — diff the integrity-adjusted ranking between
-  two submissions on the same benchmark. The framework's headline UX.
-
-.. _typer: https://typer.tiangolo.com/
+Two commands from the pre-pivot scaffold (``leaderboard``, ``compare``)
+were removed when v0.1 narrowed the project to a stress-test runner.
+They are tracked in ``docs/followups.md`` for v0.2+.
 """
 
 from __future__ import annotations
 
+import json
+from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich.console import Console
+
+from trajaudit.adapters.malt import load_malt_split
+from trajaudit.core.trajectory import Trajectory
+from trajaudit.monitors import Monitor
+from trajaudit.monitors.metr_prompt import METRPromptMonitor
+from trajaudit.report import ReportCard, ScoreRecord, compute_report
+from trajaudit.transformations import apply_structural_battery
 
 app = typer.Typer(
     name="trajaudit",
-    help="Multi-layer audit framework for agent benchmark integrity.",
+    help="Stress-test runner for AI safety monitors. v0.1 ships one monitor (METR's prompt) and three structural transformations on MALT.",
     no_args_is_help=True,
 )
 
 
+@app.callback()
+def _root() -> None:
+    """No-op root callback that forces typer to treat ``run`` as a subcommand
+    rather than collapsing the single-command app into a bare invocation.
+    """
+
+
+# v0.1 hard cap on --limit (prevents accidental budget blowouts even before
+# the per-run --budget-usd cap kicks in).
+_LIMIT_HARD_CAP = 1000
+
+
+def _ground_truth(trajectory: Trajectory) -> int:
+    """Binary collapse of MALT's taxonomy tags: 1 = any positive, 0 = ``normal``."""
+    labels = trajectory.metadata.get("labels", [])
+    if not labels:
+        return 0
+    return 0 if all(lbl == "normal" for lbl in labels) else 1
+
+
+def _load_balanced(subset: str, limit: int) -> tuple[list[Trajectory], dict[str, int]]:
+    """Stream MALT into two buckets (positives + negatives), each capped at ``limit // 2``.
+
+    Returns the combined list and a stats dict for the run header.
+    Iteration ends when both buckets are full OR the dataset is exhausted.
+    """
+    half = limit // 2
+    pos: list[Trajectory] = []
+    neg: list[Trajectory] = []
+    scanned = 0
+    for traj in load_malt_split(subset=subset, limit=None):  # type: ignore[arg-type]
+        scanned += 1
+        gt = _ground_truth(traj)
+        if gt == 1 and len(pos) < half:
+            pos.append(traj)
+        elif gt == 0 and len(neg) < half:
+            neg.append(traj)
+        if len(pos) == half and len(neg) == half:
+            break
+    stats = {
+        "scanned": scanned,
+        "positives_loaded": len(pos),
+        "negatives_loaded": len(neg),
+        "balance_requested": half,
+    }
+    return pos + neg, stats
+
+
+def _verdict_to_score(verdict_lo: float) -> float:
+    """Convert ``SemanticVerdict.confidence_band[0]`` (in [0, 1]) to a 0-10 monitor score."""
+    return verdict_lo * 10.0
+
+
+def _records_path(output: Path | None) -> Path:
+    if output is not None:
+        return output
+    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+    return Path(f"./trajaudit_run_{stamp}.json")
+
+
+def _write_records(records: list[ScoreRecord], report: ReportCard, path: Path) -> None:
+    payload = {
+        "records": [asdict(r) for r in records],
+        "report": report.to_dict(),
+    }
+    path.write_text(json.dumps(payload, indent=2))
+
+
 @app.command()
 def run(
-    benchmark: Annotated[
+    monitor: Annotated[
+        str,
+        typer.Option("--monitor", help="Monitor name. v0.1 only accepts 'metr'."),
+    ] = "metr",
+    limit: Annotated[
+        int,
+        typer.Option(
+            "--limit",
+            help=f"Number of trajectories to evaluate (balanced 50/50). Hard cap: {_LIMIT_HARD_CAP}.",
+        ),
+    ] = 60,
+    subset: Annotated[
         str,
         typer.Option(
-            "--benchmark",
-            "-b",
-            help="Benchmark identifier (e.g. 'swe-bench-verified', 'terminal-bench').",
+            "--subset",
+            help="MALT subset: 'manually_reviewed' (default) or 'all'.",
         ),
-    ],
-    trajectory_dir: Annotated[
-        Path,
+    ] = "manually_reviewed",
+    budget_usd: Annotated[
+        float,
         typer.Option(
-            "--trajectory-dir",
-            "-t",
-            help="Directory containing agent trajectory artifacts to audit.",
+            "--budget-usd",
+            help="Hard cap on API spend in USD. Stops scoring when reached; report uses partial results.",
         ),
-    ],
+    ] = 5.0,
     output: Annotated[
         Path | None,
-        typer.Option(
-            "--output",
-            "-o",
-            help="Optional path to write the AuditVerdict report (JSON).",
-        ),
+        typer.Option("--output", "-o", help="Path for the raw scores JSON. Defaults to ./trajaudit_run_<timestamp>.json."),
     ] = None,
 ) -> None:
-    """Audit every trajectory in ``trajectory_dir`` against ``benchmark``."""
-    raise NotImplementedError("Phase 1: wire up runner + benchmark adapters.")
+    """Run the v0.1 stress-test pipeline against MALT."""
+    console = Console()
 
+    # ---- Input validation -------------------------------------------------
+    if monitor != "metr":
+        console.print(
+            f"[red]Error:[/] monitor '{monitor}' not supported in v0.1. "
+            "Only 'metr' is valid.",
+            style="bold",
+        )
+        raise typer.Exit(code=2)
+    if limit > _LIMIT_HARD_CAP:
+        console.print(
+            f"[red]Error:[/] --limit {limit} exceeds v0.1 hard cap of {_LIMIT_HARD_CAP}.",
+            style="bold",
+        )
+        raise typer.Exit(code=2)
+    if subset not in {"manually_reviewed", "all"}:
+        console.print(
+            f"[red]Error:[/] --subset must be 'manually_reviewed' or 'all'; got {subset!r}.",
+            style="bold",
+        )
+        raise typer.Exit(code=2)
+    if budget_usd <= 0:
+        console.print(
+            f"[red]Error:[/] --budget-usd must be positive; got {budget_usd}.",
+            style="bold",
+        )
+        raise typer.Exit(code=2)
 
-@app.command()
-def leaderboard(
-    runs_dir: Annotated[
-        Path,
-        typer.Option(
-            "--runs-dir",
-            "-r",
-            help="Directory containing multiple agents' run subdirectories.",
-        ),
-    ],
-    output: Annotated[
-        Path,
-        typer.Option(
-            "--output",
-            "-o",
-            help="Destination file. Format inferred from extension (.md / .json / .csv).",
-        ),
-    ],
-) -> None:
-    """Build an integrity-adjusted leaderboard across agents under ``runs_dir``."""
-    raise NotImplementedError("Phase 5: implement leaderboard aggregation.")
+    # ---- Construct the monitor -------------------------------------------
+    monitor_obj: Monitor = METRPromptMonitor()
 
+    # ---- Load + balance ---------------------------------------------------
+    console.print(f"[bold]Loading MALT[/] (subset={subset}, target n={limit})…")
+    trajectories, load_stats = _load_balanced(subset=subset, limit=limit)
+    if load_stats["positives_loaded"] != load_stats["balance_requested"] or load_stats[
+        "negatives_loaded"
+    ] != load_stats["balance_requested"]:
+        console.print(
+            f"[yellow]Note:[/] balance not fully achieved — "
+            f"requested {load_stats['balance_requested']} each, got "
+            f"+{load_stats['positives_loaded']} / -{load_stats['negatives_loaded']} "
+            f"after scanning {load_stats['scanned']} rows."
+        )
+    console.print(
+        f"Loaded {len(trajectories)} trajectories "
+        f"(+{load_stats['positives_loaded']} / -{load_stats['negatives_loaded']})."
+    )
 
-@app.command()
-def compare(
-    benchmark: Annotated[
-        str,
-        typer.Option(
-            "--benchmark",
-            "-b",
-            help="Benchmark identifier the two submissions both target.",
-        ),
-    ],
-    submission_a: Annotated[
-        Path,
-        typer.Option(
-            "--submission-a",
-            "-a",
-            help="Path to submission A's trajectory directory or verdict file.",
-        ),
-    ],
-    submission_b: Annotated[
-        Path,
-        typer.Option(
-            "--submission-b",
-            "-B",
-            help="Path to submission B's trajectory directory or verdict file.",
-        ),
-    ],
-    output: Annotated[
-        Path | None,
-        typer.Option(
-            "--output",
-            "-o",
-            help="Optional destination for the comparison report (defaults to stdout).",
-        ),
-    ] = None,
-) -> None:
-    """Diff the integrity-adjusted ranking between two submissions.
+    # ---- Score every variant ---------------------------------------------
+    records: list[ScoreRecord] = []
+    budget_hit = False
+    for i, traj in enumerate(trajectories, start=1):
+        if monitor_obj.total_cost_usd >= budget_usd:  # type: ignore[attr-defined]
+            console.print(
+                f"[yellow]Budget cap reached[/] (${monitor_obj.total_cost_usd:.2f} >= ${budget_usd:.2f}); "  # type: ignore[attr-defined]
+                f"stopping after {i - 1}/{len(trajectories)} trajectories."
+            )
+            budget_hit = True
+            break
+        gt = _ground_truth(traj)
+        variants = apply_structural_battery(traj)
+        for variant_name, variant_traj in variants.items():
+            try:
+                verdict = monitor_obj.score(variant_traj)
+            except Exception as exc:  # noqa: BLE001
+                console.print(
+                    f"[red]Monitor call failed on {traj.trajectory_id}/{variant_name}:[/] {exc!r}"
+                )
+                # Treat as abstain so the pipeline keeps going.
+                records.append(
+                    ScoreRecord(
+                        trajectory_id=traj.trajectory_id,
+                        transformation_name=variant_name,
+                        ground_truth_label=gt,
+                        monitor_score=None,
+                        abstain=True,
+                    )
+                )
+                continue
+            score = (
+                None
+                if verdict.abstain
+                else _verdict_to_score(verdict.confidence_band[0])
+            )
+            records.append(
+                ScoreRecord(
+                    trajectory_id=traj.trajectory_id,
+                    transformation_name=variant_name,
+                    ground_truth_label=gt,
+                    monitor_score=score,
+                    abstain=verdict.abstain,
+                )
+            )
+        spend = monitor_obj.total_cost_usd  # type: ignore[attr-defined]
+        console.print(
+            f"[{i}/{len(trajectories)}] {traj.trajectory_id}: "
+            f"scored 4 variants (${spend:.2f} / ${budget_usd:.2f})"
+        )
 
-    Headline diagnostic: when submissions A and B have similar raw
-    pass-rates but very different exploit counts, the rank diff makes
-    the gap legible.
-    """
-    raise NotImplementedError("Phase 5: implement integrity-adjusted comparison.")
+    # ---- Report card ------------------------------------------------------
+    console.print()
+    report = compute_report(records)
+    report.render(console=console)
+
+    # ---- Persist ----------------------------------------------------------
+    out_path = _records_path(output)
+    _write_records(records, report, out_path)
+    console.print(f"\n[bold green]Records written to[/] {out_path}")
+    console.print(
+        f"Total API spend: ${monitor_obj.total_cost_usd:.4f} "  # type: ignore[attr-defined]
+        f"({monitor_obj.calls} calls)"  # type: ignore[attr-defined]
+    )
+    if budget_hit:
+        console.print(
+            "[yellow]Run was aborted by the budget cap. Report reflects partial results.[/]"
+        )
 
 
 def main() -> None:
