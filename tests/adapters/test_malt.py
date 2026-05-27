@@ -168,6 +168,11 @@ def test_round_trip_through_pydantic() -> None:
 
 def test_load_malt_split_missing_hf_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("HF_TOKEN", raising=False)
+    # Also stub the cached-token fallback so the test is hermetic on
+    # machines where `hf auth login` was previously run.
+    import huggingface_hub  # type: ignore[import-not-found]
+
+    monkeypatch.setattr(huggingface_hub, "get_token", lambda: None)
     with pytest.raises(RuntimeError) as exc:
         next(iter(load_malt_split()))
     assert "HF_TOKEN" in str(exc.value)

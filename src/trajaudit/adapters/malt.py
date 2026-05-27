@@ -304,12 +304,20 @@ def load_malt_split(
     """
     token = os.environ.get("HF_TOKEN")
     if not token:
+        # Fall back to the cached token written by `hf auth login`.
+        try:
+            from huggingface_hub import get_token
+
+            token = get_token()
+        except Exception:  # noqa: BLE001
+            token = None
+    if not token:
         raise RuntimeError(
-            "HF_TOKEN env var not set. To use the MALT adapter:\n"
-            "  1. Generate a read token at https://huggingface.co/settings/tokens\n"
-            "  2. Accept the dataset terms at "
-            "https://huggingface.co/datasets/metr-evals/malt-public\n"
-            "  3. Export HF_TOKEN=hf_... in your shell\n"
+            "No HuggingFace credentials found. To use the MALT adapter, either:\n"
+            "  (a) export HF_TOKEN=hf_... in your shell, or\n"
+            "  (b) run `hf auth login` once (token persists in ~/.cache/huggingface/).\n"
+            "Plus accept the dataset terms at "
+            "https://huggingface.co/datasets/metr-evals/malt-public.\n"
             "Adapter aborts rather than returning an empty iterator so the "
             "auth failure is visible at call site."
         )
