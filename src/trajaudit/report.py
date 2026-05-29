@@ -81,6 +81,31 @@ class ScoreRecord:
     monitor_score: float | None
     abstain: bool = False
 
+    def __post_init__(self) -> None:
+        """Enforce the invariant ``(monitor_score is None) ⟺ (abstain is True)``.
+
+        Every producer of :class:`ScoreRecord` in v0.1 (the CLI verdict path,
+        the CLI exception path, the test helpers) maintains this invariant.
+        Without enforcement, a record that violated it would slip into
+        :func:`compute_report` and surface as a downstream ``IndexError`` in
+        the bootstrap loop (``clean_y`` and ``clean_s`` are filtered by
+        ``not abstain`` and ``monitor_score is not None`` respectively, so
+        the arrays would have different lengths). This validator makes the
+        invariant fail fast at construction instead.
+        """
+        if self.abstain and self.monitor_score is not None:
+            raise ValueError(
+                "ScoreRecord invariant violated: abstain=True requires "
+                "monitor_score is None, but got "
+                f"abstain={self.abstain!r}, monitor_score={self.monitor_score!r}"
+            )
+        if not self.abstain and self.monitor_score is None:
+            raise ValueError(
+                "ScoreRecord invariant violated: monitor_score is None requires "
+                "abstain=True, but got "
+                f"abstain={self.abstain!r}, monitor_score={self.monitor_score!r}"
+            )
+
 
 @dataclass
 class TransformReport:

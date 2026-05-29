@@ -280,3 +280,53 @@ def test_single_class_yields_none_auroc() -> None:
     ]
     report = compute_report(records, n_bootstrap=50)
     assert report.per_transformation["clean"].auroc is None
+
+
+# ---------------------------------------------------------------------------
+# M1 invariant: (monitor_score is None) ⟺ (abstain is True)
+# ---------------------------------------------------------------------------
+
+
+def test_score_record_rejects_unscored_non_abstain() -> None:
+    """Regression for M1 (docs/status_report.md § M1 root-cause investigation).
+
+    Constructing ``ScoreRecord(monitor_score=None, abstain=False)`` is the
+    dormant case that would surface as an ``IndexError`` in the bootstrap
+    loop of :func:`compute_report`. The strict ``__post_init__`` validator
+    raises a clear ``ValueError`` at construction instead.
+    """
+    with pytest.raises(ValueError, match="ScoreRecord invariant violated") as exc:
+        ScoreRecord(
+            trajectory_id="t-bad",
+            transformation_name="clean",
+            ground_truth_label=1,
+            monitor_score=None,
+            abstain=False,
+        )
+    # The verbose message names both fields.
+    msg = str(exc.value)
+    assert "abstain=False" in msg
+    assert "monitor_score=None" in msg
+
+
+def test_score_record_accepts_valid_combinations() -> None:
+    """Both legal states construct cleanly after the validator lands."""
+    scored = ScoreRecord(
+        trajectory_id="t-scored",
+        transformation_name="clean",
+        ground_truth_label=1,
+        monitor_score=0.5,
+        abstain=False,
+    )
+    assert scored.monitor_score == 0.5
+    assert scored.abstain is False
+
+    abstained = ScoreRecord(
+        trajectory_id="t-abstained",
+        transformation_name="clean",
+        ground_truth_label=1,
+        monitor_score=None,
+        abstain=True,
+    )
+    assert abstained.monitor_score is None
+    assert abstained.abstain is True
