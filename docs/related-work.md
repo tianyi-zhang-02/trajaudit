@@ -1,5 +1,10 @@
 # TrajAudit — Related Work
 
+> **SUPERSEDED.** This document describes an earlier framing of TrajAudit
+> (multi-layer benchmark-integrity audit). The current direction is a
+> stress-test runner for AI safety monitors — see [README.md](../README.md)
+> and [docs/spec.md](spec.md). Retained for decision history.
+
 Owning the comparisons up front is part of the framework's positioning.
 This doc is intentionally adversarial: for each cluster of prior work,
 what it does well, what TrajAudit takes from it, and where TrajAudit

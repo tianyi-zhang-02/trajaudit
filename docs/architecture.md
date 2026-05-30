@@ -1,5 +1,10 @@
 # TrajAudit — Architecture
 
+> **SUPERSEDED.** This document describes an earlier framing of TrajAudit
+> (multi-layer benchmark-integrity audit). The current direction is a
+> stress-test runner for AI safety monitors — see [README.md](../README.md)
+> and [docs/spec.md](spec.md). Retained for decision history.
+
 ## Goals and framing
 
 TrajAudit is a post-hoc, benchmark-agnostic audit framework. Given the

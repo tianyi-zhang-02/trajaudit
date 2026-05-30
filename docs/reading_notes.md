@@ -137,9 +137,14 @@ another friction point — TrajAudit would re-implement from the paper.
 **Dataset shape (the public split). 10,919 total agent transcripts across
 403 tasks and 21 models** in the full dataset. The public release is
 **7,179 runs across 169 tasks, 30 task families, ~19 models**. Of those,
-**2,690 are manually reviewed** (1,014 manually-reviewed benign + 1,676
-manually-reviewed with observed behaviour), and 8,229 are presumed-benign
-unreviewed runs with an **estimated 6% label-error rate**. **4,426 runs
+**1,826 are manually reviewed** as observed on-disk during Phase 3
+implementation. (METR's blog reports 2,690 manually-reviewed runs
+*across the full dataset*; the gap of ~864 corresponds to internal-only
+tasks that are not present in the public release. METR's published
+breakdown of 1,014 benign + 1,676 with observed behaviour likewise
+applies to the full dataset, not the 1,826 manually-reviewed subset of
+the public split.) Presumed-benign unreviewed runs in the public split
+carry an **estimated 6% label-error rate** per METR. **4,426 runs
 include reasoning traces (`has_chain_of_thought=True`).** Two formats are
 released: `malt-public` (ordered-message list, 28.3 GB) and
 `malt-transcripts-public` (full DAG, 8.48 GB). Both are MIT-licensed but
