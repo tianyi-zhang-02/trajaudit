@@ -25,20 +25,6 @@ during the pre-merge cleanup pass on PR #1 (2026-05-27).
   option 1 for v0.1.0 evidence, option 3 for getting PR #1 merged
   without further delay.
 
-- **M1 fix authorization — strict vs. lenient `ScoreRecord` validator.**
-  Raised during the pre-merge cleanup pass (status-report Task A). Root
-  cause is case (a) type-level impossibility; per the prompt I stopped
-  before implementing. Two open questions on the fix:
-  1. Strict validator (proposed): enforce
-     `(monitor_score is None) ⟺ (abstain == True)` via `__post_init__`,
-     raising `ValueError` on violation. Recommended.
-  2. Lenient renderer: treat `(abstain=False, monitor_score=None)` as
-     "no signal, drop from numeric computation," no producer-side
-     constraint.
-
-  Full investigation and proposed change live in
-  `docs/status_report.md` under "M1 root-cause investigation."
-
 ## Resolved
 
 - **Q1 — Branch name mismatch (`v01-cli-stress-test-runner` vs.
@@ -62,6 +48,14 @@ during the pre-merge cleanup pass on PR #1 (2026-05-27).
   (`chore(monitors): add TODO for hardcoded context window (Q4)`), per
   user direction to accept the constant for v0.1 and add a TODO for
   parameterization in v0.2.
+
+- **M1 — `ScoreRecord` length-mismatch hazard in `compute_report`.**
+  → Resolved by commit `ce2d923` (`fix(report): enforce ScoreRecord
+  invariant at construction (M1)`), per user authorisation of the
+  strict `__post_init__` validator enforcing
+  `(monitor_score is None) ⟺ (abstain == True)`. Full root-cause
+  investigation in `docs/status_report.md` under "M1 root-cause
+  investigation."
 
 ## Abandoned
 
