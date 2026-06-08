@@ -134,7 +134,10 @@ def _patch_cli(monkeypatch: pytest.MonkeyPatch, monitor: _FakeMonitor, *, n_pos:
     import monitorstress.cli as cli_mod
 
     monkeypatch.setattr(cli_mod, "load_malt_split", _fake_load_malt_split_factory(n_pos, n_neg))
-    monkeypatch.setattr(cli_mod, "METRPromptMonitor", lambda: monitor)
+    # Accept arbitrary kwargs — the CLI now passes ``model=<resolved>``,
+    # and future runs may pass more. The fake monitor ignores construction
+    # args; tests that want to inspect them use a capturing factory instead.
+    monkeypatch.setattr(cli_mod, "METRPromptMonitor", lambda **kw: monitor)
 
 
 def test_happy_path_writes_records_and_prints_report(
@@ -237,3 +240,121 @@ def test_imbalanced_dataset_logs_warning(
     assert result.exit_code == 0
     assert "balance not fully achieved" in result.stdout.lower() \
         or "+5 / -" in result.stdout  # one of these always appears
+
+
+# ---------------------------------------------------------------------------
+# --model flag: resolution + recording in run output
+#
+# These tests are the anti-footgun cover for the silent-wrong-model class
+# of bug — a prior throwaway Sonnet experiment ran Haiku because the file
+# edit landed in a copy the running package didn't load. After this PR:
+#   (1) the CLI passes the resolved canonical id to the monitor; and
+#   (2) the resolved id is written into the run-output JSON, so every
+#       run self-documents which judge produced its scores.
+# ---------------------------------------------------------------------------
+
+
+def _capturing_monitor_factory(captured: dict) -> object:
+    """Return a callable that records its construction kwargs in ``captured``
+    and yields a benign fake monitor."""
+    fake = _FakeMonitor()
+    def _factory(**kwargs):
+        captured.update(kwargs)
+        return fake
+    return _factory
+
+
+def test_model_alias_haiku_resolves_to_canonical_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict = {}
+    import monitorstress.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "load_malt_split", _fake_load_malt_split_factory(2, 2))
+    monkeypatch.setattr(cli_mod, "METRPromptMonitor", _capturing_monitor_factory(captured))
+    output = tmp_path / "run.json"
+    result = runner.invoke(
+        app,
+        ["run", "--model", "haiku", "--limit", "4", "--budget-usd", "10.0", "--output", str(output)],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert captured["model"] == "claude-haiku-4-5-20251001"
+
+
+def test_model_alias_sonnet_resolves_to_canonical_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict = {}
+    import monitorstress.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "load_malt_split", _fake_load_malt_split_factory(2, 2))
+    monkeypatch.setattr(cli_mod, "METRPromptMonitor", _capturing_monitor_factory(captured))
+    output = tmp_path / "run.json"
+    result = runner.invoke(
+        app,
+        ["run", "--model", "sonnet", "--limit", "4", "--budget-usd", "10.0", "--output", str(output)],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert captured["model"] == "claude-sonnet-4-5-20250929"
+
+
+def test_model_alias_sonnet_4_6_resolves_to_canonical_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict = {}
+    import monitorstress.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "load_malt_split", _fake_load_malt_split_factory(2, 2))
+    monkeypatch.setattr(cli_mod, "METRPromptMonitor", _capturing_monitor_factory(captured))
+    output = tmp_path / "run.json"
+    result = runner.invoke(
+        app,
+        ["run", "--model", "sonnet-4-6", "--limit", "4", "--budget-usd", "10.0", "--output", str(output)],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert captured["model"] == "claude-sonnet-4-6"
+
+
+def test_resolved_model_id_recorded_in_run_output(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Load-bearing anti-footgun test.
+
+    Every run output must carry the resolved model id at a known top-level
+    key, so 'which model ran' is a recorded fact in the artifact rather
+    than something the reader must reconstruct from logs or external tools.
+    If this test is failing, the prior silent-wrong-model bug is back —
+    do not ship.
+    """
+    fake = _FakeMonitor()
+    _patch_cli(monkeypatch, fake, n_pos=2, n_neg=2)
+    output = tmp_path / "run.json"
+    result = runner.invoke(
+        app,
+        ["run", "--model", "sonnet", "--limit", "4", "--budget-usd", "10.0", "--output", str(output)],
+    )
+    assert result.exit_code == 0, result.stdout
+    payload = json.loads(output.read_text())
+    assert "model" in payload, "run output JSON must contain a top-level 'model' field"
+    assert payload["model"] == "claude-sonnet-4-5-20250929"
+
+
+def test_unknown_model_id_aborts_run_via_monitor_validation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A CLI alias the resolution table doesn't know is passed through to
+    the monitor verbatim; the monitor's ValueError surfaces as a non-zero
+    exit. Tests this happens BEFORE any trajectory load (no records
+    written) — silent-wrong-model failures must abort, not partially
+    proceed.
+    """
+    import monitorstress.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "load_malt_split", _fake_load_malt_split_factory(2, 2))
+    # Don't patch METRPromptMonitor — let the real constructor fire and
+    # raise on the unknown model.
+    output = tmp_path / "run.json"
+    result = runner.invoke(
+        app,
+        ["run", "--model", "totally-fake-model", "--limit", "4", "--budget-usd", "10.0", "--output", str(output)],
+    )
+    assert result.exit_code != 0
+    # The output file should NOT have been written — the run aborted before
+    # any trajectory was scored.
+    assert not output.exists()

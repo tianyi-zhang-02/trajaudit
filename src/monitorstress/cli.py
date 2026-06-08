@@ -46,6 +46,17 @@ def _root() -> None:
 # the per-run --budget-usd cap kicks in).
 _LIMIT_HARD_CAP = 1000
 
+# CLI shorthand → canonical Anthropic model id. The canonical id must be a
+# key in METRPromptMonitor's _PRICING_USD_PER_MTOK table; the monitor
+# constructor raises ValueError on unknown ids, so a typo or unregistered
+# model can never produce a silent wrong-pricing run. To add a new model:
+# add it to _PRICING_USD_PER_MTOK first, then add a shorthand here.
+_MODEL_ALIASES: dict[str, str] = {
+    "haiku": "claude-haiku-4-5-20251001",
+    "sonnet": "claude-sonnet-4-5-20250929",
+    "sonnet-4-6": "claude-sonnet-4-6",
+}
+
 
 def _ground_truth(trajectory: Trajectory) -> int:
     """Binary collapse of MALT's taxonomy tags: 1 = any positive, 0 = ``normal``."""
@@ -95,8 +106,23 @@ def _records_path(output: Path | None) -> Path:
     return Path(f"./monitorstress_run_{stamp}.json")
 
 
-def _write_records(records: list[ScoreRecord], report: ReportCard, path: Path) -> None:
+def _write_records(
+    records: list[ScoreRecord],
+    report: ReportCard,
+    path: Path,
+    *,
+    model: str,
+) -> None:
+    """Persist the run's records + report to ``path`` as JSON.
+
+    The ``model`` argument is recorded at the top of the payload so every
+    run output self-documents which judge model produced its scores. This
+    is the anti-footgun for the silent wrong-model class of bug — after
+    this lands, "which model ran" is a verifiable fact in the output file,
+    not a guess from logs or the Anthropic Console.
+    """
     payload = {
+        "model": model,
         "records": [asdict(r) for r in records],
         "report": report.to_dict(),
     }
@@ -134,6 +160,19 @@ def run(
         Path | None,
         typer.Option("--output", "-o", help="Path for the raw scores JSON. Defaults to ./monitorstress_run_<timestamp>.json."),
     ] = None,
+    model: Annotated[
+        str,
+        typer.Option(
+            "--model",
+            help=(
+                "Judge model. haiku (default, cheap/fast) | sonnet | sonnet-4-6. "
+                "Use a Sonnet model to reproduce METR's published baseline more "
+                "closely (~3x cost). The resolved canonical model id is recorded "
+                "in the run-output JSON so every run self-documents which judge "
+                "produced its scores."
+            ),
+        ),
+    ] = "haiku",
 ) -> None:
     """Run the v0.1 stress-test pipeline against MALT."""
     console = Console()
@@ -165,11 +204,20 @@ def run(
         )
         raise typer.Exit(code=2)
 
-    # ---- Construct the monitor -------------------------------------------
+    # ---- Resolve model alias and construct the monitor -------------------
+    # Aliases map shorthand (haiku/sonnet/sonnet-4-6) to canonical Anthropic
+    # model ids. Unknown shorthands are passed through verbatim so a user
+    # who knows an exact id can use it directly; the monitor's __init__
+    # raises ValueError if the result isn't in its pricing table, which
+    # surfaces here as an unhandled exception with a clear error message.
     # Concrete type (not the Monitor protocol) so mypy resolves the
     # cost-tracking attributes the CLI reads (total_cost_usd, calls). The
     # protocol surface is still validated by isinstance(...) in the tests.
-    monitor_obj = METRPromptMonitor()
+    resolved_model = _MODEL_ALIASES.get(model, model)
+    monitor_obj = METRPromptMonitor(model=resolved_model)
+    console.print(
+        f"[bold]Monitor:[/] METR prompt → [cyan]{resolved_model}[/]"
+    )
 
     # ---- Load + balance ---------------------------------------------------
     console.print(f"[bold]Loading MALT[/] (subset={subset}, target n={limit})…")
@@ -246,7 +294,7 @@ def run(
 
     # ---- Persist ----------------------------------------------------------
     out_path = _records_path(output)
-    _write_records(records, report, out_path)
+    _write_records(records, report, out_path, model=resolved_model)
     console.print(f"\n[bold green]Records written to[/] {out_path}")
     console.print(
         f"Total API spend: ${monitor_obj.total_cost_usd:.4f} "
