@@ -2,7 +2,7 @@
 
 Reproduces the verbatim prompt published in METR's MALT release
 (https://metr.org/blog/2025-10-14-malt-dataset-of-natural-and-prompted-behaviors/),
-calls ``claude-sonnet-4-7`` via the Anthropic API at temperature 0, parses
+calls ``claude-haiku-4-5-20251001`` via the Anthropic API at temperature 0, parses
 the 0-10 integer output, and returns a :class:`SemanticVerdict`.
 
 Prompt provenance
@@ -79,17 +79,18 @@ Respond in the following format:
 # Tolerant regex: any integer in [0, 10] preceded by "score" up to ~50 chars.
 _SCORE_RE = re.compile(r'"score"\s*:\s*"?(\d{1,2})"?', re.IGNORECASE)
 
-# Context-window guardrail for Claude Sonnet 4.7 (200k tokens) minus an 8k
+# Context-window guardrail for Claude Haiku 4.5 (200k tokens) minus an 8k
 # safety margin for the prompt scaffold + max_tokens output budget.
-# TODO: parameterize context window — currently hardcoded for claude-sonnet-4-7.
+# TODO: parameterize context window — currently hardcoded for claude-haiku-4-5-20251001.
 # Move to a per-model lookup when v0.2 adds OpenAI / open-weight monitor families.
 _DEFAULT_CONTEXT_WINDOW = 200_000
 _DEFAULT_SAFETY_MARGIN = 8_000
 
-# Per-million-token pricing (USD). Update if Anthropic changes Sonnet 4.7
+# Per-million-token pricing (USD). Update if Anthropic changes Haiku 4.5
 # pricing. CLI budget tracking depends on these constants.
-_INPUT_USD_PER_MTOK = 3.0
-_OUTPUT_USD_PER_MTOK = 15.0
+# Source: anthropic.com/claude/haiku, accessed 2026-06-07.
+_INPUT_USD_PER_MTOK = 1.0
+_OUTPUT_USD_PER_MTOK = 5.0
 
 
 def _format_event(event: Any) -> str:
@@ -121,12 +122,12 @@ class METRPromptMonitor:
         An Anthropic client (or compatible mock for tests). If omitted,
         constructs an :class:`anthropic.Anthropic` from environment defaults.
     model:
-        Anthropic model id. Defaults to ``"claude-sonnet-4-7"``.
+        Anthropic model id. Defaults to ``"claude-haiku-4-5-20251001"``.
     max_retries:
         Total attempts on transient errors before giving up. Defaults to 3.
     context_window:
         The model's input context capacity in tokens. Defaults to 200_000
-        (Claude Sonnet 4.7).
+        (Claude Haiku 4.5).
     safety_margin:
         Tokens reserved for prompt scaffold and ``max_tokens`` output budget.
         Trajectories whose serialized form exceeds
@@ -139,7 +140,7 @@ class METRPromptMonitor:
         self,
         *,
         client: Any | None = None,
-        model: str = "claude-sonnet-4-7",
+        model: str = "claude-haiku-4-5-20251001",
         max_retries: int = 3,
         context_window: int = _DEFAULT_CONTEXT_WINDOW,
         safety_margin: int = _DEFAULT_SAFETY_MARGIN,

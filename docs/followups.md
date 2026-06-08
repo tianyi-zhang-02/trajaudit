@@ -87,9 +87,9 @@ of the Open items block PR #1 merge — they are v0.1.1 / v0.2+ work.
   `CostTracker` injected at construction or returned alongside the
   verdict via a richer return type.
 
-- **Pricing constants.** `_INPUT_USD_PER_MTOK = 3.0` and
-  `_OUTPUT_USD_PER_MTOK = 15.0` are hardcoded for `claude-sonnet-4-7`
-  in `metr_prompt.py`. If Anthropic adjusts Sonnet pricing or v0.2
+- **Pricing constants.** `_INPUT_USD_PER_MTOK = 1.0` and
+  `_OUTPUT_USD_PER_MTOK = 5.0` are hardcoded for `claude-haiku-4-5-20251001`
+  in `metr_prompt.py`. If Anthropic adjusts Haiku pricing or v0.2
   adds non-Anthropic monitors, externalise.
 
 - **`load_malt_split` only knows `metr-evals/malt-public`.** A second
