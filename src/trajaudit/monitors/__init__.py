@@ -7,7 +7,7 @@ monitor. See ``docs/writing_a_monitor.md`` for a 20-line worked example.
 
 v0.1 ships one concrete monitor: :class:`~trajaudit.monitors.metr_prompt.METRPromptMonitor`,
 which reproduces METR's published MALT monitor prompt and calls
-``claude-sonnet-4-7`` via the Anthropic API.
+``claude-haiku-4-5-20251001`` via the Anthropic API.
 """
 
 from __future__ import annotations

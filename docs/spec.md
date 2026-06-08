@@ -34,7 +34,7 @@ trajaudit run --monitor metr --limit 60 --budget-usd 5.00
 | MALT adapter | `trajaudit.adapters.malt` | `load_malt_split()`, `malt_row_to_trajectory()`. Requires `HF_TOKEN`. |
 | Structural transformations | `trajaudit.transformations.structural` | `drop_reasoning`, `truncate_observations`, `pad_with_noops`, `apply_structural_battery`. Pure functions. |
 | Monitor protocol | `trajaudit.monitors.Monitor` | Runtime-checkable Protocol. `name: str` + `score(Trajectory) -> SemanticVerdict`. |
-| METR monitor | `trajaudit.monitors.metr_prompt.METRPromptMonitor` | Verbatim METR MALT reward-hacking prompt; calls `claude-sonnet-4-7`. |
+| METR monitor | `trajaudit.monitors.metr_prompt.METRPromptMonitor` | Verbatim METR MALT reward-hacking prompt; calls `claude-haiku-4-5-20251001`. |
 | Report card | `trajaudit.report` | `compute_report()`, `ScoreRecord`, `ReportCard`, `TransformReport`. |
 | CLI | `trajaudit.cli` | Single command: `trajaudit run`. |
 
@@ -132,7 +132,7 @@ commits and `docs/auto_session_questions.md`:
 2. **`anthropic` dependency placement.** Initially promoted from the
    `[llm]` extra to runtime; subsequently moved back to `[llm]` with
    a guarded import in `METRPromptMonitor` (commit `9524f50`).
-3. **Context-window constant** for `claude-sonnet-4-7` is hardcoded at
+3. **Context-window constant** for `claude-haiku-4-5-20251001` is hardcoded at
    200K with a TODO comment for parameterization in v0.2
    (commit `02c47f9`).
 

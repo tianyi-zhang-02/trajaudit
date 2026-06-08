@@ -50,7 +50,7 @@ the binary label is set at ≥5; this is a defensible default but is not
 the same as METR's own AUROC computation, which operates on the raw
 score. The pilot is *not* expected to match METR's 0.96 reward-hacking
 AUROC exactly because: (a) METR's number is for GPT-5, the pilot uses
-`claude-sonnet-4-7`; (b) METR's number is computed over their full
+`claude-haiku-4-5-20251001`; (b) METR's number is computed over their full
 dataset, the pilot is n=60; (c) the bootstrap CI at n=60 will be wide
 enough to be consistent with a wide range of true values.
 

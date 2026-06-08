@@ -190,9 +190,9 @@ def test_cost_tracking_accumulates() -> None:
     assert monitor.calls == 2
     assert monitor.total_input_tokens == 4_000
     assert monitor.total_output_tokens == 200
-    # 2000 in + 100 out × pricing: (2000 × 3/1e6) + (100 × 15/1e6) = 0.0075. × 2 calls = 0.015.
-    assert monitor.total_cost_usd == pytest.approx(0.015, rel=1e-6)
-    assert monitor.last_call_cost_usd == pytest.approx(0.0075, rel=1e-6)
+    # 2000 in + 100 out × pricing: (2000 × 1/1e6) + (100 × 5/1e6) = 0.0025. × 2 calls = 0.005.
+    assert monitor.total_cost_usd == pytest.approx(0.005, rel=1e-6)
+    assert monitor.last_call_cost_usd == pytest.approx(0.0025, rel=1e-6)
 
 
 # ---------------------------------------------------------------------------

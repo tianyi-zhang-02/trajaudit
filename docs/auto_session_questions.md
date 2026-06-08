@@ -44,10 +44,12 @@ during the pre-merge cleanup pass on PR #1 (2026-05-27).
   No commit needed; the additions stand.
 
 - **Q4 — Token-count guardrail hardcodes 200K context window for
-  `claude-sonnet-4-7`.** → Resolved by commit `02c47f9`
+  `claude-haiku-4-5-20251001`.** → Resolved by commit `02c47f9`
   (`chore(monitors): add TODO for hardcoded context window (Q4)`), per
   user direction to accept the constant for v0.1 and add a TODO for
-  parameterization in v0.2.
+  parameterization in v0.2. (Model id was `claude-sonnet-4-7` at the
+  time of resolution; updated when the monitor switched to Haiku 4.5
+  pinned snapshot.)
 
 - **M1 — `ScoreRecord` length-mismatch hazard in `compute_report`.**
   → Resolved by commit `ce2d923` (`fix(report): enforce ScoreRecord
