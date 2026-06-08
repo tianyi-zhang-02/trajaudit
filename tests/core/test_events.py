@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from trajaudit.core.events import (
+from monitorstress.core.events import (
     ObservationEvent,
     ReasoningEvent,
     ScoringEvent,
     ToolCallEvent,
 )
-from trajaudit.core.trajectory import Trajectory
+from monitorstress.core.trajectory import Trajectory
 
 
 def _sample_trajectory() -> Trajectory:

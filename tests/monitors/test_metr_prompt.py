@@ -7,11 +7,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from trajaudit.core.events import ReasoningEvent, ToolCallEvent
-from trajaudit.core.trajectory import Trajectory
-from trajaudit.core.verdict import SemanticLabel
-from trajaudit.monitors import Monitor
-from trajaudit.monitors.metr_prompt import METRPromptMonitor
+from monitorstress.core.events import ReasoningEvent, ToolCallEvent
+from monitorstress.core.trajectory import Trajectory
+from monitorstress.core.verdict import SemanticLabel
+from monitorstress.monitors import Monitor
+from monitorstress.monitors.metr_prompt import METRPromptMonitor
 
 
 def _trajectory() -> Trajectory:
@@ -153,7 +153,7 @@ def test_retry_then_fail_after_max_attempts(monkeypatch: pytest.MonkeyPatch) -> 
     client.messages.create.side_effect = _FakeRateLimitError()
 
     # Patch time.sleep to keep the test fast.
-    import trajaudit.monitors.metr_prompt as metr_mod
+    import monitorstress.monitors.metr_prompt as metr_mod
 
     monkeypatch.setattr(metr_mod, "time", MagicMock())
     monitor = METRPromptMonitor(client=client, max_retries=3)

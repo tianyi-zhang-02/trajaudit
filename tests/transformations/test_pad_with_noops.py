@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from trajaudit.core.events import ObservationEvent, ToolCallEvent
-from trajaudit.core.trajectory import Trajectory
-from trajaudit.transformations import pad_with_noops
+from monitorstress.core.events import ObservationEvent, ToolCallEvent
+from monitorstress.core.trajectory import Trajectory
+from monitorstress.transformations import pad_with_noops
 
 
 def test_happy_path_default_rate(sample_trajectory: Trajectory) -> None:
@@ -91,7 +91,7 @@ def test_input_not_mutated(sample_trajectory: Trajectory) -> None:
 def test_apply_structural_battery_returns_four_variants(
     sample_trajectory: Trajectory,
 ) -> None:
-    from trajaudit.transformations import apply_structural_battery
+    from monitorstress.transformations import apply_structural_battery
 
     variants = apply_structural_battery(sample_trajectory)
     assert set(variants) == {"clean", "drop_reasoning", "truncate_obs", "pad_noops"}

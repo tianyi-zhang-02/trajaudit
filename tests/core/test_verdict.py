@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from trajaudit.core.verdict import (
+from monitorstress.core.verdict import (
     SemanticLabel,
     SemanticVerdict,
     TaxonomyTag,

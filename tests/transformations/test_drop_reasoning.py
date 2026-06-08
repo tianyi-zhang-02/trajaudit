@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from trajaudit.core.events import (
+from monitorstress.core.events import (
     ObservationEvent,
     ReasoningEvent,
     ScoringEvent,
     ToolCallEvent,
 )
-from trajaudit.core.trajectory import Trajectory
-from trajaudit.transformations import drop_reasoning
+from monitorstress.core.trajectory import Trajectory
+from monitorstress.transformations import drop_reasoning
 
 
 def test_happy_path_drops_only_reasoning(sample_trajectory: Trajectory) -> None:

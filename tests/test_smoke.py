@@ -7,9 +7,9 @@ under ``tests/core/``, ``tests/layer1/``, ``tests/layer2/``, and
 
 from __future__ import annotations
 
-import trajaudit
+import monitorstress
 
 
 def test_version_exposed() -> None:
-    assert isinstance(trajaudit.__version__, str)
-    assert trajaudit.__version__
+    assert isinstance(monitorstress.__version__, str)
+    assert monitorstress.__version__

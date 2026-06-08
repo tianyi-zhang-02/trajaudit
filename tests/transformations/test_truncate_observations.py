@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from trajaudit.core.trajectory import Trajectory
-from trajaudit.transformations import truncate_observations
+from monitorstress.core.trajectory import Trajectory
+from monitorstress.transformations import truncate_observations
 
 
 def test_happy_path_default_fraction_removes_20pct(sample_trajectory: Trajectory) -> None:
@@ -63,7 +63,7 @@ def test_rounding_to_nearest_integer() -> None:
     # 11 events × 0.2 = 2.2 → rounds to 2.
     events = [
         type(e)(**e.model_dump()) for e in [
-            __import__("trajaudit.core.events", fromlist=["ReasoningEvent"]).ReasoningEvent(content=f"r{i}")
+            __import__("monitorstress.core.events", fromlist=["ReasoningEvent"]).ReasoningEvent(content=f"r{i}")
             for i in range(11)
         ]
     ]

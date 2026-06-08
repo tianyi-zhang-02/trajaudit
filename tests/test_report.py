@@ -11,7 +11,7 @@ import random
 import pytest
 from rich.console import Console
 
-from trajaudit.report import (
+from monitorstress.report import (
     ScoreRecord,
     TransformReport,
     compute_report,
