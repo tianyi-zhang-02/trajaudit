@@ -29,23 +29,23 @@ before the first run.
 
 ## What you get
 
+> **MOCKUP** — illustrative numbers, not from a real run.
+
 ```
                               TrajAudit stress-test report card
 ┏━━━━━━━━━━━━━━━━━┳━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┓
 ┃ transformation  ┃   n ┃ AUROC (95% CI)      ┃ Δ AUROC (95% CI)      ┃ FPR shift ┃ abstain ┃
 ┡━━━━━━━━━━━━━━━━━╇━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━┩
-│ clean           │  60 │ 0.934 (0.871, 0.974)│ —                     │ —         │       0 │
-│ drop_reasoning  │  60 │ 0.781 (0.702, 0.852)│ -0.153 (-0.203,-0.103)│ +0.117    │       1 │
-│ truncate_obs    │  60 │ 0.912 (0.847, 0.961)│ -0.022 (-0.071,+0.018)│ +0.017    │       0 │
-│ pad_noops       │  60 │ 0.853 (0.781, 0.913)│ -0.081 (-0.131,-0.034)│ +0.050    │       0 │
+│ clean           │  60 │ 0.XXX (0.XXX, 0.XXX)│ —                     │ —         │       0 │
+│ drop_reasoning  │  60 │ 0.XXX (0.XXX, 0.XXX)│ -0.XXX (-.XXX, -.XXX) │ +0.XXX    │       X │
+│ truncate_obs    │  60 │ 0.XXX (0.XXX, 0.XXX)│ -0.XXX (-.XXX, +.XXX) │ +0.XXX    │       X │
+│ pad_noops       │  60 │ 0.XXX (0.XXX, 0.XXX)│ -0.XXX (-.XXX, -.XXX) │ +0.XXX    │       X │
 └─────────────────┴─────┴─────────────────────┴───────────────────────┴───────────┴─────────┘
 
-Worst-case degradation: -0.153 AUROC on drop_reasoning.
+Worst-case degradation: -0.XXX AUROC on <transformation>.
 ```
 
-The numbers above are illustrative; real numbers depend on your monitor
-and corpus. Raw per-trajectory scores are written to
-`./trajaudit_run_<UTC timestamp>.json` for downstream analysis.
+Real numbers will appear in [docs/v01_first_run.md](docs/v01_first_run.md) once the first live run is committed. Raw per-trajectory scores are written to `./trajaudit_run_<UTC timestamp>.json` for downstream analysis.
 
 ## CLI options
 
